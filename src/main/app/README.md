@@ -24,6 +24,7 @@ Used:
 
 ## Running the scenario
 The application runs on a free account in CloudHub. As such one needs to do very little to use it:
+
 1. Go to `https://mulerson.slack.com/messages/general/`.
 2. Use the demo user `reviewer` with password `mulesoft234`
 3. Type `/muleweather London` in the chat and press Enter key. You may change London to any other city you like.
@@ -48,7 +49,6 @@ I have selected to bring in Slack the following commands:
 ### Design
 The app does not use any custom code - the generic components seemed sufficient.
 
-#### HTTP connector
 * Used the HTTP connector to provide the bot service listening to particular requests from Slack.
 * Used the Expression component to select significant properties from the HTTP request parameters and keep them into the `flowVars` map.
 * Used a Choice flow control element to fork the logic into the weather command and all the rest.
@@ -61,6 +61,7 @@ The app does not use any custom code - the generic components seemed sufficient.
 
 ## Setting up a local project
 ### Run as mule application
+
 1. Execute the project in Studio, or the command line using maven.
 2. Make sure the machine can accept requests from the Internet (use public machine, or proxy, or tunnel, or load ballancer).
 3. Make sure your firewall allows for the `http.port` value defined in the `mule-app.properties` file. 
