@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"  xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+	<global-property name="wunderground.api.key" value="7f1d079ed714c6e9" doc:name="Global Property"/>
+    <http:listener-config doc:name="HTTP Listener Configuration" host="0.0.0.0" name="HTTP_slack_listener_configuration" port="${http.port}"/>
+    <http:request-config name="HTTP_weather_underground_request_configuration" host="api.wunderground.com" port="80" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_yahoo_request_configuration" host="finance.yahoo.com" port="80" doc:name="HTTP Request Configuration"/>
+    <http:request-config name="HTTP_google_geocode_request_configuration" host="maps.googleapis.com" port="80" doc:name="HTTP Request Configuration"/>
+    <flow  name="MulebotFlow">
+        <http:listener config-ref="HTTP_slack_listener_configuration" doc:name="Receive HTTP request" path="/*" metadata:id="c29cc741-4f55-4bf9-a92f-e6fbfba7676f"/>
+        <expression-component doc:name="parse into flow vars"><![CDATA[flowVars.command = message.inboundProperties.'http.query.params'.command;
+flowVars.text = message.inboundProperties.'http.query.params'.text;]]></expression-component>
+        <choice doc:name="Choice on command">
+            <when expression="flowVars.command == '/muleweather' &amp;&amp; flowVars.text != null">
+                <flow-ref name="getCountryByCity" doc:name="getCountryByCity"/>
+                <choice doc:name="Choice on found country code">
+                    <when expression="flowVars.countryCode != null">
+                        <flow-ref name="getWeatherInfo" doc:name="getWeatherInfo"/>
+                    </when>
+                    <otherwise>
+                        <logger message="Could not call the weather service with empty city code!" level="INFO" doc:name="Logger"/>
+                    </otherwise>
+                </choice>
+
+            </when>
+            <when expression="flowVars.command == '/mulequote' &amp;&amp; flowVars.text != null">
+                <flow-ref name="getStockQuote" doc:name="getStockQuote"/>
+            </when>
+            <when expression="flowVars.text == null || flowVars.text == ''">
+                <set-payload value="Please provide a parameter to the &quot;#[flowVars.command]&quot; command." encoding="UTF-8" mimeType="text/plain" doc:name="Empty text result"/>
+                <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <set-payload value="Unsupported command &quot;#[flowVars.command]&quot;" encoding="UTF-8" mimeType="text/plain" doc:name="Unsupported command result"/>
+                <logger message="found command #[flowVars.command]" level="INFO" doc:name="all the rest logger"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <sub-flow name="getCountryByCity">
+        <http:request config-ref="HTTP_google_geocode_request_configuration" path="/maps/api/geocode/json" method="GET" doc:name="Invoke Google Geo API">
+            <http:request-builder>
+                <http:query-param paramName="address" value="#[flowVars.text]"/>
+            </http:request-builder>
+        </http:request>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <choice doc:name="Choice on found country code">
+            <when expression="payload.status == 'OK'">
+                <expression-component doc:name="Extract the country code"><![CDATA[flowVars.countryCode = payload.results[0].address_components[3].short_name;]]></expression-component>
+                <logger message="Found contry: #[flowVars.countryCode]" level="INFO" doc:name="Logger"/>
+            </when>
+            <otherwise>
+                <set-payload value="Failed to find a country for city &quot;#[flowVars.text]&quot;" encoding="UTF-8" mimeType="text/json" doc:name="Failed to find result"/>
+                <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="getWeatherInfo">
+        <http:request config-ref="HTTP_weather_underground_request_configuration" path="api/${wunderground.api.key}/geolookup/conditions/q/#[flowVars.countryCode]/#[flowVars.text].json" method="GET" doc:name="Invoke Weather Service"/>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <choice doc:name="Choice on error">
+            <when expression="payload.response.error == null">
+                <set-payload value="It is #[Float.toString(payload.current_observation.temp_c)]C in #[flowVars.text] now." encoding="UTF-8" mimeType="text/plain" doc:name="Provide the report result"/>
+            </when>
+            <otherwise>
+                <set-payload value="#[payload.response.error.description]" encoding="UTF-8" mimeType="text/plain" doc:name="Weather report not found result"/>
+            </otherwise>
+        </choice>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+
+    </sub-flow>
+    <sub-flow name="getStockQuote">
+        <http:request config-ref="HTTP_yahoo_request_configuration" path="/webservice/v1/symbols/#[flowVars.text]/quote" method="GET" doc:name="Invoke Yahoo Quote Service">
+            <http:request-builder>
+                <http:query-param paramName="format" value="json"/>
+
+            </http:request-builder>
+        </http:request>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <choice doc:name="Choice">
+            <when expression="payload.list.meta.count &gt; 0">
+                <set-payload value="&quot;#[payload.list.resources[0].resource.fields.name]&quot;, &quot;#[payload.list.resources[0].resource.fields.symbol]&quot;, current price = #[payload.list.resources[0].resource.fields.price]." encoding="UTF-8" mimeType="text/plain" doc:name="Provide the quote result"/>
+            </when>
+            <otherwise>
+                <set-payload value="Could not find any quote for symbol &quot;#[flowVars.text]&quot;!" encoding="UTF-8" mimeType="text/plain" doc:name="Quote not found result"/>
+            </otherwise>
+        </choice>
+
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+</mule>
