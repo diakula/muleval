@@ -61,7 +61,6 @@ The app does not use any custom code - the generic components seemed sufficient.
 
 ## Setting up a local project
 ### Run as mule application
-
 1. Execute the project in Studio, or the command line using maven.
 2. Make sure the machine can accept requests from the Internet (use public machine, or proxy, or tunnel, or load ballancer).
 3. Make sure your firewall allows for the `http.port` value defined in the `mule-app.properties` file. 
@@ -69,13 +68,15 @@ The app does not use any custom code - the generic components seemed sufficient.
 Alternatively, deploy to your account in CloudHub. The deployer there will inject the proper listening port, in this case `80`.
 
 ### Slack setup
-A slack team account offers custom command extension API. 
+A slack team account offers custom command extension API.
+
 1. One needs to set up a team and register with the service. 
 2. Register two new custom integration of type Slash command. We support `/muleweather` and `/mulequote`.
 3. Configure the URL that each command calls.
 
 ### Weather channel setup
 I have selected the Weather Underground service because it offers its API for small scale use for free.
+
 1. Setup an account.
 2. Purchase the $0 option to get an API key.
 3. Update the global property "wunderground.api.key" to contain the proper API key.
