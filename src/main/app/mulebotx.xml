@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
         <expression-component doc:name="parse into flow vars"><![CDATA[flowVars.command = message.inboundProperties.'http.query.params'.command;
 flowVars.text = message.inboundProperties.'http.query.params'.text;]]></expression-component>
         <choice doc:name="Choice on command">
-            <when expression="flowVars.command == '/muleweather' &amp;&amp; flowVars.text != null">
+            <when expression="flowVars.command == '/muleweather' &amp;&amp; flowVars.text != null &amp;&amp; flowVars.text != ''">
                 <flow-ref name="getCountryByCity" doc:name="getCountryByCity"/>
                 <choice doc:name="Choice on found country code">
                     <when expression="flowVars.countryCode != null">
@@ -27,7 +27,7 @@ flowVars.text = message.inboundProperties.'http.query.params'.text;]]></expressi
                 </choice>
 
             </when>
-            <when expression="flowVars.command == '/mulequote' &amp;&amp; flowVars.text != null">
+            <when expression="flowVars.command == '/mulequote' &amp;&amp; flowVars.text != null &amp;&amp; flowVars.text != ''">
                 <flow-ref name="getStockQuote" doc:name="getStockQuote"/>
             </when>
             <when expression="flowVars.text == null || flowVars.text == ''">
