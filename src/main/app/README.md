@@ -57,7 +57,8 @@ The app does not use any custom code - the generic components seemed sufficient.
  * Used the HTTP connector to request the weather service.
  * Used the JSON to Object transformer to parse the JSON result
  * Used the Set Payload transformer to set the result payload, and used an expression therein to extract the value of interest, in this case the temperature in Celsium units.
- * Used the Logger component for diagnostic and audit purposes.
+* Used the Logger component for diagnostic and audit purposes.
+* Used global properties to set security keys outside of the main logic configuration.
 
 ## Setting up a local project
 ### Run as mule application
